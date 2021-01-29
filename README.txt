@@ -9,3 +9,11 @@ $JAVA_HOME/bin/jlink --module-path $PATH_TO_FX_MODS:mods --add-modules Aspire --
 
 Package
 $JAVA_HOME/bin/jpackage -n Aspire --runtime-image Aspire -m Aspire/app.CPTPlotter
+
+add this later
+module Aspire {
+    requires transitive javafx.controls;
+    requires transitive javafx.swing;
+
+    exports app;
+}

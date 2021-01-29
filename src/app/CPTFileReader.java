@@ -14,8 +14,6 @@ public class CPTFileReader {
             throw new RuntimeException("File Not Exists");
         }
 
-//        System.out.println(file.getAbsolutePath());
-
         /* Key is user name. For now, it is the timestamp.The value is the row of answers.*/
         HashMap<String, String[]> map = new HashMap<>();
 
@@ -25,15 +23,10 @@ public class CPTFileReader {
                 sc.nextLine();
             }
 
-            int id = 0;
-
             while (sc.hasNextLine()) {
-
-                // TODO: Change this to 1 as we will access the name of the person not the timestamp.
                 String[] row = sc.nextLine().split(",");
-//                map.put(row[0], row);
-                map.put(String.valueOf(id), row);
-                id++;
+                map.put(row[1], row);
+                System.out.println("Inserting Entry with Key: " + row[1]);
             }
 
         } catch (IOException ex) {
@@ -50,8 +43,6 @@ public class CPTFileReader {
 
         String[] responses = map.get(id);
 
-        // TODO: We can change the start index to 1 or 2 depending on which column the first question starts...
-
         HashMap<String, Integer> points = new HashMap<>();
 
         points.put("Never", 1);
@@ -64,19 +55,16 @@ public class CPTFileReader {
 
         int numAxis = axis.length;
 
-        for (int i = 1; i < responses.length; i++) {
+        for (int i = 2; i < responses.length; i++) {
             Axis ax = axis[i % numAxis];
 
             String response = responses[i];
-//            System.out.println("Question " + i + ": " + response);
 
             int pt = points.getOrDefault(response, 0);
             ax.update(pt);
         }
 
-        /* Only for logging purpose */
         for (Axis ax : axis) {
-//            System.out.println(ax.toString());
             cptPlotter.updateInfoMessage(ax.toString());
         }
 
