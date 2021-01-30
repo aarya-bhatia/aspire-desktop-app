@@ -4,10 +4,7 @@ import javafx.application.Application;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
-import javafx.scene.chart.CategoryAxis;
-import javafx.scene.chart.LineChart;
-import javafx.scene.chart.NumberAxis;
-import javafx.scene.chart.XYChart;
+import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.BorderPane;
@@ -18,6 +15,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import javax.imageio.ImageIO;
+import javax.sound.sampled.Line;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -25,11 +23,13 @@ import java.util.*;
 
 public class CPTPlotter extends Application {
 
+    private static final int CHART_WIDTH = 700;
+    private static final int CHART_HEIGHT = 400;
+
     File selectedFile;
 
-    List<LineChart<String, Number>> plots = new LinkedList<>();
-
-    LineChart<String, Number> currentChart;
+    List<Chart> plots = new LinkedList<>();
+    Chart currentChart;
     BorderPane plotPane;
 
     Button openButton, startButton, backButton, nextButton;
@@ -55,13 +55,51 @@ public class CPTPlotter extends Application {
                 List<Axis> ax = CPTFileReader.score(data, entry.getKey(), this);
                 Collections.sort(ax);
 
-                plots.add(plot(ax));
+                CategoryAxis X = new CategoryAxis();
+                X.setLabel("Category");
 
+                NumberAxis Y = new NumberAxis();
+                Y.setLabel("Score");
+
+                XYChart.Series<String, Number> series = createSeries(ax, X, Y);
+
+                Chart linePlot = createLinePlot(X, Y, series);
                 total++;
+                plots.add(linePlot);
+                saveImageAsPng(entry.getKey(), linePlot);
+
+//                Chart barPlot = createBarPlot(X, Y, series);
+//                total++;
+//                plots.add(barPlot);
+//                saveImageAsPng(entry.getKey(), barPlot);
             }
             size = total;
             currentPlotIndex = 0;
         }
+    }
+
+    private Chart createBarPlot(CategoryAxis X, NumberAxis Y, XYChart.Series<String, Number> series) {
+        BarChart<String, Number> barChart = new BarChart<>(X, Y);
+        barChart.getData().add(series);
+        return barChart;
+    }
+
+    private Chart createLinePlot(CategoryAxis X, NumberAxis Y, XYChart.Series<String, Number> series) {
+        LineChart<String, Number> lineChart = new LineChart<>(X, Y);
+        lineChart.getData().add(series);
+        return lineChart;
+    }
+
+    private XYChart.Series<String, Number> createSeries(List<Axis> ax, CategoryAxis x, NumberAxis y) {
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+
+        series.setName("Student");
+
+        for (Axis a : ax) {
+            series.getData().add(new XYChart.Data<>(a.getName(), a.getScore()));
+        }
+
+        return series;
     }
 
     private ToolBar createToolbar() {
@@ -118,7 +156,7 @@ public class CPTPlotter extends Application {
 
         vbox.getChildren().add(infoPane);
 
-        return new Scene(vbox, 600, 600);
+        return new Scene(vbox, CHART_WIDTH, CHART_HEIGHT);
     }
 
     private void initGUI() {
@@ -174,7 +212,7 @@ public class CPTPlotter extends Application {
                     createPlots();
                     stage.setScene(createScene());
                 } catch (IOException ex) {
-                    ex.printStackTrace();
+                    showAlert(ex.getMessage(), Alert.AlertType.ERROR);
                 }
             }
         });
@@ -187,51 +225,27 @@ public class CPTPlotter extends Application {
         stage.show();
     }
 
-    public LineChart<String, Number> plot(List<app.Axis> ax) {
-        CategoryAxis X = new CategoryAxis();
-        X.setLabel("Category");
-
-        NumberAxis Y = new NumberAxis();
-        Y.setLabel("Score");
-
-        LineChart<String, Number> lineChart = new LineChart<>(X, Y);
-//        BarChart<String, Number> barChart = new BarChart<>(X, Y);
-
-        XYChart.Series<String, Number> series = new XYChart.Series<>();
-
-        series.setName("Student");
-
-        for (Axis a : ax) {
-            series.getData().add(new XYChart.Data<>(a.getName(), a.getScore()));
-        }
-
-        lineChart.getData().add(series);
-
-        try {
-            saveImageAsPng(new Scene(new BorderPane(lineChart), 600, 400));
-        } catch (IOException e) {
-            showAlert(e.getMessage(), Alert.AlertType.ERROR);
-        }
-
-        return lineChart;
-    }
-
-    private void saveImageAsPng(Scene scene) throws IOException {
-        // TODO: set file name as student name
+    private void saveImageAsPng(String studentName, Chart chart) throws IOException {
+        Scene scene = new Scene(new BorderPane(chart), 600, 400);
 
         WritableImage image = scene.snapshot(null);
         BufferedImage buffImage = SwingFXUtils.fromFXImage(image, null);
 
-        File baseDir = new File(System.getProperty("user.home"));
-        File documentsDir = new File(baseDir, "Documents");
-        File chartsDir = new File(documentsDir, "Charts");
-        File file = new File(chartsDir, new Date() + ".png");
+        File file = getDestinationFile(studentName);
 
         if (file.exists() || file.mkdirs()) {
             ImageIO.write(buffImage, "PNG", file);
             String message = "File saved in location: " + file.getAbsolutePath();
             updateInfoMessage(message);
         }
+    }
+
+    private File getDestinationFile(String studentName) {
+        File baseDir = new File(System.getProperty("user.home"));
+        File documentsDir = new File(baseDir, "Documents");
+        File chartsDir = new File(documentsDir, "Charts");
+        // TODO: add a sub directory for line and bar chart distinction
+        return new File(chartsDir, String.format("%s_%s.png", studentName, System.currentTimeMillis()));
     }
 
     public static void showAlert(String str, Alert.AlertType alertType) {
