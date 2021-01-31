@@ -32,6 +32,8 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
     File selectedFile;
 
     List<Chart> plots = new LinkedList<>();
+    List<Chart> barPlots = new LinkedList<>();
+
     Chart currentChart;
     BorderPane plotPane;
 
@@ -42,6 +44,13 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
 
     TextArea infoBox;
     BorderPane infoPane;
+
+    public enum ChartTypes {
+        LINE, BAR
+    }
+
+    ComboBox<ChartTypes> chartTypeComboBox;
+    ChartTypes chartType = ChartTypes.LINE;
 
     String infoMessage = "No new notifications";
 
@@ -61,45 +70,60 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
                 List<Axis> ax = CPTFileReader.score(data, key, this);
                 Collections.sort(ax);
 
-                CategoryAxis X = new CategoryAxis();
-                X.setLabel("Category");
+                Chart linePlot = createLinePlot(key, ax);
 
-                NumberAxis Y = new NumberAxis();
-                Y.setLabel("Score");
+                Chart barPlot = createBarPlot(key, ax);
 
-                XYChart.Series<String, Number> series = createSeries(key, ax, X, Y);
-
-                Chart linePlot = createLinePlot(X, Y, series);
-                total++;
                 plots.add(linePlot);
-                saveImageAsPng(entry.getKey(), linePlot);
+                barPlots.add(barPlot);
 
-//                Chart barPlot = createBarPlot(X, Y, series);
-//                total++;
-//                plots.add(barPlot);
-//                saveImageAsPng(entry.getKey(), barPlot);
+                saveImageAsPng(entry.getKey(), linePlot);
+                saveImageAsPng(entry.getKey(), barPlot);
+
+                total++;
             }
+
             size = total;
             currentPlotIndex = 0;
         }
     }
 
-    private Chart createBarPlot(CategoryAxis X, NumberAxis Y, XYChart.Series<String, Number> series) {
+    private Chart createBarPlot(String name, List<Axis> ax) {
+        CategoryAxis X = new CategoryAxis();
+        X.setLabel("Category");
+
+        NumberAxis Y = new NumberAxis();
+        Y.setLabel("Score");
+
+        XYChart.Series<String, Number> series = createSeries(name, ax, X, Y);
+
         BarChart<String, Number> barChart = new BarChart<>(X, Y);
+
         barChart.getData().add(series);
+
         return barChart;
     }
 
-    private Chart createLinePlot(CategoryAxis X, NumberAxis Y, XYChart.Series<String, Number> series) {
+    private Chart createLinePlot(String name, List<Axis> ax) {
+        CategoryAxis X = new CategoryAxis();
+        X.setLabel("Category");
+
+        NumberAxis Y = new NumberAxis();
+        Y.setLabel("Score");
+
+        XYChart.Series<String, Number> series = createSeries(name, ax, X, Y);
+
         LineChart<String, Number> lineChart = new LineChart<>(X, Y);
+
         lineChart.getData().add(series);
+
         return lineChart;
     }
 
-    private XYChart.Series<String, Number> createSeries(String studentName, List<Axis> ax, CategoryAxis x, NumberAxis y) {
+    private XYChart.Series<String, Number> createSeries(String name, List<Axis> ax, CategoryAxis x, NumberAxis y) {
         XYChart.Series<String, Number> series = new XYChart.Series<>();
 
-        series.setName(studentName);
+        series.setName(name);
 
         for (Axis a : ax) {
             series.getData().add(new XYChart.Data<>(a.getName(), a.getScore()));
@@ -117,6 +141,9 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
         toolBar.getItems().add(new Separator());
 
         toolBar.getItems().add(startButton);
+        toolBar.getItems().add(new Separator());
+
+        toolBar.getItems().add(chartTypeComboBox);
         toolBar.getItems().add(new Separator());
 
         toolBar.getItems().add(nextButton);
@@ -173,6 +200,14 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
         fileNameLabel = new Label("No File Selected.");
         plotNumber = new Label("0 of 0");
 
+        chartTypeComboBox = new ComboBox();
+
+        for(ChartTypes type: ChartTypes.values()) {
+            chartTypeComboBox.getItems().add(type);
+        }
+
+        chartTypeComboBox.getSelectionModel().selectFirst();
+
         fc = new FileChooser();
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
 
@@ -180,6 +215,8 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
         startButton.setOnAction(this);
         nextButton.setOnAction(this);
         backButton.setOnAction(this);
+
+        chartTypeComboBox.setOnAction(this);
     }
 
     public void updateInfoMessage(String nextLine) {
@@ -199,7 +236,7 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
             return;
         }
         currentPlotIndex = (currentPlotIndex + change) % size;
-        currentChart = plots.get(currentPlotIndex);
+        currentChart = chartType == ChartTypes.LINE ? plots.get(currentPlotIndex) : barPlots.get(currentPlotIndex);
         plotPane.setCenter(currentChart);
         plotNumber.setText((1 + currentPlotIndex) + " of " + size);
     }
@@ -234,8 +271,18 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
         File baseDir = new File(System.getProperty("user.home"));
         File documentsDir = new File(baseDir, "Documents");
         File chartsDir = new File(documentsDir, "Charts");
-        // TODO: add a sub directory for line and bar chart distinction
-        return new File(chartsDir, String.format("%s_%s.png", studentName, System.currentTimeMillis()));
+        File subDirectory = null;
+        if(chartType.equals(ChartTypes.LINE)) {
+           subDirectory = new File(chartsDir, "Line");
+        }
+        else if(chartType.equals(ChartTypes.BAR)) {
+            subDirectory = new File(chartsDir, "Bar");
+        }
+        else {
+            subDirectory = chartsDir;
+        }
+
+        return new File(subDirectory, String.format("%s_%s.png", studentName, System.currentTimeMillis()));
     }
 
     public static void showAlert(String str, Alert.AlertType alertType) {
@@ -281,6 +328,11 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
         }
         else if(event.getSource() == backButton) {
                 updatePlot(-1);
+        }
+        else if(event.getSource() == chartTypeComboBox) {
+            Object selectedItem = chartTypeComboBox.getSelectionModel().getSelectedItem();
+            chartType = (ChartTypes) selectedItem;
+            updatePlot(0);
         }
     }
 }
