@@ -2,7 +2,10 @@ package app;
 
 import javafx.application.Application;
 import javafx.embed.swing.SwingFXUtils;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.geometry.Orientation;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.chart.*;
 import javafx.scene.control.*;
@@ -13,15 +16,15 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 import javax.imageio.ImageIO;
-import javax.sound.sampled.Line;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-public class CPTPlotter extends Application {
+public class CPTPlotter extends Application implements EventHandler<ActionEvent> {
 
     private static final int CHART_WIDTH = 700;
     private static final int CHART_HEIGHT = 500;
@@ -172,6 +175,11 @@ public class CPTPlotter extends Application {
 
         fc = new FileChooser();
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+
+        openButton.setOnAction(this);
+        startButton.setOnAction(this);
+        nextButton.setOnAction(this);
+        backButton.setOnAction(this);
     }
 
     public void updateInfoMessage(String nextLine) {
@@ -198,32 +206,11 @@ public class CPTPlotter extends Application {
 
     @Override
     public void start(Stage stage) {
-        stage.setTitle("Plotter");
-
         initGUI();
 
-        openButton.setOnAction(e -> {
-            selectedFile = fc.showOpenDialog(stage);
-            fileNameLabel.setText(selectedFile.getAbsolutePath());
-            updateInfoMessage("File selected: " + selectedFile.getAbsolutePath());
-        });
-
-        startButton.setOnAction(e -> {
-            if (selectedFile != null) {
-                try {
-                    updateInfoMessage("Creating Plots...");
-                    createPlots();
-                    stage.setScene(createScene());
-                } catch (IOException ex) {
-                    showAlert(ex.getMessage(), Alert.AlertType.ERROR);
-                }
-            }
-        });
-
-        backButton.setOnAction(e -> updatePlot(-1));
-        nextButton.setOnAction(e -> updatePlot(1));
-
         Scene scene = createScene();
+
+        stage.setTitle("Plotter");
         stage.setScene(scene);
         stage.show();
     }
@@ -263,6 +250,37 @@ public class CPTPlotter extends Application {
         }
         catch (Exception e) {
             showAlert(e.getMessage(), Alert.AlertType.ERROR);
+        }
+    }
+
+    @Override
+    public void handle(ActionEvent event) {
+        if(event.getSource() == openButton) {
+            Window window = openButton.getScene().getWindow();
+            Stage stage = (Stage) window;
+            selectedFile = fc.showOpenDialog(stage);
+            fileNameLabel.setText(selectedFile.getAbsolutePath());
+            updateInfoMessage("File selected: " + selectedFile.getAbsolutePath());
+        }
+        else if(event.getSource() == startButton) {
+            if (selectedFile != null) {
+                try {
+                    updateInfoMessage("Creating Plots...");
+                    createPlots();
+
+                    Window window = startButton.getScene().getWindow();
+                    Stage stage = (Stage) window;
+                    stage.setScene(createScene());
+                } catch (IOException ex) {
+                    showAlert(ex.getMessage(), Alert.AlertType.ERROR);
+                }
+            }
+        }
+        else if(event.getSource() == nextButton) {
+                updatePlot(1);
+        }
+        else if(event.getSource() == backButton) {
+                updatePlot(-1);
         }
     }
 }
