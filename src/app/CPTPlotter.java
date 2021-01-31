@@ -24,7 +24,7 @@ import java.util.*;
 public class CPTPlotter extends Application {
 
     private static final int CHART_WIDTH = 700;
-    private static final int CHART_HEIGHT = 400;
+    private static final int CHART_HEIGHT = 500;
 
     File selectedFile;
 
@@ -35,6 +35,7 @@ public class CPTPlotter extends Application {
     Button openButton, startButton, backButton, nextButton;
     Label fileNameLabel;
     Label plotNumber;
+    FileChooser fc;
 
     TextArea infoBox;
     BorderPane infoPane;
@@ -52,7 +53,9 @@ public class CPTPlotter extends Application {
 
             for (Map.Entry<String, String[]> entry : data.entrySet()) {
 
-                List<Axis> ax = CPTFileReader.score(data, entry.getKey(), this);
+                String key = entry.getKey();
+
+                List<Axis> ax = CPTFileReader.score(data, key, this);
                 Collections.sort(ax);
 
                 CategoryAxis X = new CategoryAxis();
@@ -61,7 +64,7 @@ public class CPTPlotter extends Application {
                 NumberAxis Y = new NumberAxis();
                 Y.setLabel("Score");
 
-                XYChart.Series<String, Number> series = createSeries(ax, X, Y);
+                XYChart.Series<String, Number> series = createSeries(key, ax, X, Y);
 
                 Chart linePlot = createLinePlot(X, Y, series);
                 total++;
@@ -90,10 +93,10 @@ public class CPTPlotter extends Application {
         return lineChart;
     }
 
-    private XYChart.Series<String, Number> createSeries(List<Axis> ax, CategoryAxis x, NumberAxis y) {
+    private XYChart.Series<String, Number> createSeries(String studentName, List<Axis> ax, CategoryAxis x, NumberAxis y) {
         XYChart.Series<String, Number> series = new XYChart.Series<>();
 
-        series.setName("Student");
+        series.setName(studentName);
 
         for (Axis a : ax) {
             series.getData().add(new XYChart.Data<>(a.getName(), a.getScore()));
@@ -166,6 +169,9 @@ public class CPTPlotter extends Application {
         startButton = new Button("Start");
         fileNameLabel = new Label("No File Selected.");
         plotNumber = new Label("0 of 0");
+
+        fc = new FileChooser();
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
     }
 
     public void updateInfoMessage(String nextLine) {
@@ -195,9 +201,6 @@ public class CPTPlotter extends Application {
         stage.setTitle("Plotter");
 
         initGUI();
-
-        FileChooser fc = new FileChooser();
-        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
 
         openButton.setOnAction(e -> {
             selectedFile = fc.showOpenDialog(stage);
