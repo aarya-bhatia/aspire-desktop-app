@@ -200,7 +200,7 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
         fileNameLabel = new Label("No File Selected.");
         plotNumber = new Label("0 of 0");
 
-        chartTypeComboBox = new ComboBox();
+        chartTypeComboBox = new ComboBox<>();
 
         for(ChartTypes type: ChartTypes.values()) {
             chartTypeComboBox.getItems().add(type);
@@ -258,7 +258,14 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
         WritableImage image = scene.snapshot(null);
         BufferedImage buffImage = SwingFXUtils.fromFXImage(image, null);
 
-        File file = getDestinationFile(studentName);
+        File file;
+
+        if(chart instanceof LineChart) {
+            file = getDestinationFile(studentName, ChartTypes.LINE);
+        }
+        else {
+            file = getDestinationFile(studentName, ChartTypes.BAR);
+        }
 
         if (file.exists() || file.mkdirs()) {
             ImageIO.write(buffImage, "PNG", file);
@@ -267,11 +274,11 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
         }
     }
 
-    private File getDestinationFile(String studentName) {
+    private static File getDestinationFile(String studentName, ChartTypes chartType) {
         File baseDir = new File(System.getProperty("user.home"));
         File documentsDir = new File(baseDir, "Documents");
         File chartsDir = new File(documentsDir, "Charts");
-        File subDirectory = null;
+        File subDirectory;
         if(chartType.equals(ChartTypes.LINE)) {
            subDirectory = new File(chartsDir, "Line");
         }
@@ -330,8 +337,7 @@ public class CPTPlotter extends Application implements EventHandler<ActionEvent>
                 updatePlot(-1);
         }
         else if(event.getSource() == chartTypeComboBox) {
-            Object selectedItem = chartTypeComboBox.getSelectionModel().getSelectedItem();
-            chartType = (ChartTypes) selectedItem;
+            chartType = chartTypeComboBox.getSelectionModel().getSelectedItem();
             updatePlot(0);
         }
     }
